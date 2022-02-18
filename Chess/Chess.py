@@ -1,9 +1,7 @@
 import chess
 import chess.polyglot
-import concurrent.futures
 import copy
 import math
-from multiprocessing import Manager
 import numpy as np
 import re
 import string
@@ -468,12 +466,26 @@ class AI:
                 return AI.evaluateBoard(board)
             return -AI.evaluateBoard(board)
 
+        # transposition lookup
+        hash = chess.polyglot.zobrist_hash(board)
+        if hash in AI.transpoTable.keys():
+            node = AI.transpoTable[hash]
+            if node.nodeScore != None:
+                AI.movesTransposed += 1
+                return node.nodeScore
+        else:
+            node = Node(1)
+            AI.transpoTable[hash] = node
+
         if board.turn:
             standPat = AI.evaluateBoard(board)
+            node.nodeScore = standPat
         else:
             standPat = -AI.evaluateBoard(board)
+            node.nodeScore = standPat
 
         if standPat >= beta:
+            node.nodeType = 2
             return beta
         if standPat > alpha:
             alpha = standPat
@@ -488,14 +500,14 @@ class AI:
                 board.pop()
 
                 if score >= beta:
+                    node.nodeType = 2
                     return beta
                 if score > alpha:
+                    node.nodeScore = score
                     alpha = score
             return alpha
         else:
-            if board.turn:
-                return AI.evaluateBoard(board)
-            return -AI.evaluateBoard(board)
+            return standPat
 
 
     @staticmethod
@@ -689,6 +701,7 @@ if __name__ == "__main__":
 
     opening = False
 
+    board.push(chess.Move.from_uci("d2d4"))
     Game.displayBoard()
     print(f"Current board evaluation: {AI.evaluateBoard(board)/100}")
 
