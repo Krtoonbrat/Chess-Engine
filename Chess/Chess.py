@@ -1,7 +1,9 @@
 import chess
 import chess.polyglot
+import concurrent.futures
 import copy
 import math
+from multiprocessing import Manager
 import numpy as np
 import re
 import string
@@ -599,16 +601,18 @@ class AI:
         PV = []
         moveList = AI.moveOrder(list(board.legal_moves), board, [0], 1, Node())
         finalDepth = False
+        deep = 1
+        
         # iterative deepening loop
         if ID:
-            for deep in range(1, depth + 1):
+            while not finalDepth:
                 currentLine = [0 for x in range(deep)]
 
                 # sets final depth flag
                 if deep == depth:
                     finalDepth = True
                 # checks Principal variation first
-                if PV != []:
+                if PV != [] and deep > 1:
                     currentLine[-deep] = PV[0]
                     PVCheck = moveList.pop(moveList.index(chess.Move.from_uci(PV[0])))
                     PV.append(0)
@@ -624,9 +628,8 @@ class AI:
                     PV = copy.copy(PVreturn)
                     PV[-deep] = chess.Move.uci(PVCheck)
 
-                else:
+                elif len(PV) != deep:
                     PV.append(0)
-                
 
                 # perform minimax search
                 for move in moveList:
@@ -641,15 +644,24 @@ class AI:
                         bestScore = score
                         bestMove = move
                         PV = copy.copy(PVreturn)
-                    beta = min(beta, score)
                 if len(PV) > 1:
                     moveList.insert(0, PVCheck)
-                # best move, best score, and beta need to be reset at the end of each loop
+                # set the aspiration window
+                # search was outside the window, need to redo the search
+                if bestScore <= alpha or bestScore >= beta:
+                    alpha = -math.inf
+                    beta = math.inf
+                    finalDepth = False
+                # the search didnt fall outside the window, we can move on to the next depth
+                else:
+                    alpha = bestScore - 140
+                    beta = bestScore + 140
+                    deep += 1
+                # best move and best score need to be reset at the end of each loop
                 # other wise the next iteration will have out of date data comparing to new data
                 if not finalDepth:
                     bestScore = math.inf
                     bestMove = None
-                    beta = math.inf
         else:
             for move in moveList:
                 board.push(move)
@@ -674,7 +686,7 @@ class AI:
         print(f"Moving: {bestMove} with a score of {bestScore/100}")
         print(f"Cut nodes: {AI.cutNodes}, Alpha cuts: {AI.alphaCuts}, Beta cuts: {AI.betaCuts}")
         print(f"PV: {PV}")
-        AI.movesExplored = 0
+        #AI.movesExplored = 0
         AI.quiesceExplored = 0
         AI.movesTransposed = 0
         AI.cutNodes = 0
@@ -725,6 +737,8 @@ if __name__ == "__main__":
                 AI.go(5, -math.inf, math.inf, True)
                 end = time.time()
                 print(f"Time spent searching: {end-start} seconds")
+                print(f"Nodes per second: {AI.movesExplored/(end-start)}")
+                AI.movesExplored = 0
         Game.displayBoard()
         print(f"Current board evaluation: {AI.evaluateBoard(board)/100}")
 
