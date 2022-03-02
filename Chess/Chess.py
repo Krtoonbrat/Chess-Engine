@@ -216,11 +216,12 @@ class Game:
 
 # class representing a position stored in the transposition table
 class Node:
-    def __init__(self, type = None, best = None, score = None, pv = None):
+    def __init__(self, type = None, best = None, score = None, pv = None, depth = None):
         self.nodeType = type
         self.bestMove = best
         self.nodeScore = score
         self.PV = pv
+        self.nodeDepth = depth
 
 
 # class wrapping all the AI variables and functions
@@ -472,7 +473,7 @@ class AI:
         hash = chess.polyglot.zobrist_hash(board)
         if hash in AI.transpoTable.keys():
             node = AI.transpoTable[hash]
-            if node.nodeScore != None:
+            if node.nodeType == 1:
                 AI.movesTransposed += 1
                 return node.nodeScore
         else:
@@ -513,7 +514,7 @@ class AI:
 
 
     @staticmethod
-    def minimax(depth, isMaximizer, alpha, beta, PV, currentLine, finalDepth):
+    def minimax(depth, isMaximizer, alpha, beta, PV, currentLine, finalDepth, searchDepth):
         if depth <= 0:
             # do a Qsearch if we are at the final depth
             if finalDepth:
@@ -527,11 +528,18 @@ class AI:
         hash = chess.polyglot.zobrist_hash(board)
         if hash in AI.transpoTable.keys():
             node = AI.transpoTable[hash]
-            if node.nodeScore != None:
-                AI.movesTransposed += 1
-                return node.nodeScore, node.PV
+            if node.nodeDepth == searchDepth:
+                if node.nodeType == 1:
+                    AI.movesTransposed += 1
+                    return node.nodeScore, node.PV
+                elif node.nodeType == 2:
+                    alpha = max(node.nodeScore, alpha)
+                elif node.nodeType == 3:
+                    beta = min(node.nodeScore, beta)
+            else:
+                node.nodeDepth = searchDepth
         else:
-            node = Node(1)
+            node = Node(1, depth=searchDepth)
             AI.transpoTable[hash] = node
 
         moveList = AI.moveOrder(list(board.legal_moves), board, PV, depth, node)
@@ -547,12 +555,11 @@ class AI:
                 board.push(move)
                 AI.movesExplored += 1
                 depth -= 1
-                score, PVreturn = AI.minimax(depth, False, alpha, beta, PV, currentLine, finalDepth)
+                score, PVreturn = AI.minimax(depth, False, alpha, beta, PV, currentLine, finalDepth, searchDepth)
                 depth += 1
                 if score > maxScore:
                     maxScore = score
-                    if finalDepth:
-                        node.nodeScore = score
+                    node.nodeScore = score
                     node.bestMove = move
                     node.PV = copy.copy(PVreturn)
                 alpha = max(score, alpha)
@@ -575,12 +582,11 @@ class AI:
                 board.push(move)
                 AI.movesExplored += 1
                 depth -= 1
-                score, PVreturn = AI.minimax(depth, True, alpha, beta, PV, currentLine, finalDepth)
+                score, PVreturn = AI.minimax(depth, True, alpha, beta, PV, currentLine, finalDepth, searchDepth)
                 depth += 1
                 if score < minScore:
                     minScore = score
-                    if finalDepth:
-                        node.nodeScore = score
+                    node.nodeScore = score
                     node.bestMove = move
                     node.PV = copy.copy(PVreturn)
                 beta = min(score, beta)
@@ -602,6 +608,7 @@ class AI:
         moveList = AI.moveOrder(list(board.legal_moves), board, [0], 1, Node())
         finalDepth = False
         deep = 1
+        aspMisses = 0
         
         # iterative deepening loop
         if ID:
@@ -619,7 +626,7 @@ class AI:
                     board.push(PVCheck)
                     AI.movesExplored += 1
                     deep -= 1
-                    score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth)
+                    score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth, deep)
                     board.pop()
                     deep += 1
                     if score < bestScore:
@@ -637,7 +644,7 @@ class AI:
                     board.push(move)
                     AI.movesExplored += 1
                     deep -= 1
-                    score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth)
+                    score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth, deep)
                     board.pop()
                     deep += 1
                     if score < bestScore:
@@ -652,6 +659,7 @@ class AI:
                     alpha = -math.inf
                     beta = math.inf
                     finalDepth = False
+                    aspMisses += 1
                 # the search didnt fall outside the window, we can move on to the next depth
                 else:
                     alpha = bestScore - 140
@@ -685,6 +693,7 @@ class AI:
         print("Moves transposed: ", AI.movesTransposed)
         print(f"Moving: {bestMove} with a score of {bestScore/100}")
         print(f"Cut nodes: {AI.cutNodes}, Alpha cuts: {AI.alphaCuts}, Beta cuts: {AI.betaCuts}")
+        print(f"Aspiration Window Misses: {aspMisses}")
         print(f"PV: {PV}")
         #AI.movesExplored = 0
         AI.quiesceExplored = 0
@@ -696,17 +705,6 @@ class AI:
         board.push(bestMove)
 
 
-# CPython
-# 1st move: Time spent searching: 8.501399993896484 seconds
-# 2nd move: Time spent searching: 9.24561357498169 seconds
-# 3rd move: Time spent searching: 15.741338014602661 seconds
-# 4th move: Time spent searching: 15.32209849357605 seconds
-
-# PyPy
-# 1st move: Time spent searching: 9.234050989151001 seconds
-# 2nd move: Time spent searching: 7.3296589851379395 seconds
-# 3rd move: Time spent searching: 10.693238973617554 seconds
-# 4th move: Time spent searching: 9.28373908996582 seconds
 
 
 if __name__ == "__main__":
