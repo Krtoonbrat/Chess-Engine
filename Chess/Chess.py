@@ -4,7 +4,6 @@ import concurrent.futures
 import copy
 import math
 from multiprocessing import Manager
-import numpy as np
 import re
 import string
 import time
@@ -247,18 +246,24 @@ class AI:
     pieceScores = {'P':100, 'N':320, 'B':300, 'R':500, 'Q':900, 'K':20000, 'p':-100, 'n':-320, 'b':-300, 'r':-500, 'q':-900, 'k':-20000}
 
     # piece square tables
-    blackPawnSquareTable = np.array([[0, 0, 0, 0, 0, 0, 0, 0], [50, 50, 50, 50, 50, 50, 50, 50], [10, 10, 20, 30, 30, 20, 10, 10], [5, 5, 10, 25, 25, 10, 5, 5], [0, 0, 0, 20, 20, 0, 0, 0], [5, -5, 10, 0, 0, 10, -5, 5], [5, 10, 5, -20, -20, 5, 10, 5], [0, 0, 0, 0, 0, 0, 0, 0]])
-    whitePawnSquareTable = np.flipud(blackPawnSquareTable)
-    blackKnightSquareTable = np.array([[-50, -40, -30, -30, -30, -30, -40, -50], [-40, -20, 0, 0, 0, 0, -20, -40], [-30, 0, 10, 15, 15, 10, 0, -30], [-30, 5, 15, 20, 20, 15, 5, -30], [-30, 0, 15, 20, 20, 15, 0, -30], [-30, 5, 10, 15, 15, 10, 5, -30], [-40, -20, 0, 5, 5, 0, -20, -40], [-50, -10, -30, -30, -30, -30, -10, -50]])
-    whiteKnightSquareTable = np.flipud(blackKnightSquareTable)
-    blackBishopSquareTable = np.array([[-20, -10, -10, -10, -10, -10, -10, -20], [-10, 0, 0, 0, 0, 0, 0, -10], [-10, 0, 5, 10, 10, 5, 0, -10], [-10, 5, 5, 10, 10, 5, 5, -10], [-10, 0, 10, 10, 10, 10, 0, -10], [-10, 10, 10, 10, 10, 10, 10, -10], [-10, 5, 0, 0, 0, 0, 5, -10], [-20, -10, -10, -10, -10, -10, -10, -20]])
-    whiteBishopSquareTable = np.flipud(blackBishopSquareTable)
-    blackRookSquareTable = np.array([[0, 0, 0, 0, 0, 0, 0, 0], [5, 10, 10, 10, 10, 10, 10, 5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [0, 0, 0, 5, 5, 5, 0, 0]])
-    whiteRookSquareTable = np.flipud(blackRookSquareTable)
-    blackQueenSquareTable = np.array([[-20, -10, -10, -5, -5, -10, -10, -20], [-10, 0, 0, 0, 0, 0, 0, -10], [-10, 0, 5, 5, 5, 5, 0, -10], [-5, 0, 5, 5, 5, 5, 0, -5], [0, 0, 5, 5, 5, 5, 0, -5], [-10, 5, 5, 5, 5, 5, 0, -10], [-10, 0, 5, 0, 0, 0, 0, -10], [-20, -10, -10, -5, -5, -10, -10, -20]])
-    whiteQueenSquareTable = np.flipud(blackQueenSquareTable)
-    blackKingSquareTable = np.array([[-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-20, -30, -30, -40, -40, -30, -30, -20], [-10, -20, -20, -20, -20, -20, -20, -10], [20, 20, 0, 0, 0, 0, 20, 20], [20, 30, 10, 0, 0, 10, 30, 20]])
-    whiteKingSquareTable = np.flipud(blackKingSquareTable)
+    blackPawnSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0], [50, 50, 50, 50, 50, 50, 50, 50], [10, 10, 20, 30, 30, 20, 10, 10], [5, 5, 10, 25, 25, 10, 5, 5], [0, 0, 0, 20, 20, 0, 0, 0], [5, -5, 10, 0, 0, 10, -5, 5], [5, 10, 5, -20, -20, 5, 10, 5], [0, 0, 0, 0, 0, 0, 0, 0]]
+    whitePawnSquareTable = blackPawnSquareTable.copy()
+    whitePawnSquareTable.reverse()
+    blackKnightSquareTable = [[-50, -40, -30, -30, -30, -30, -40, -50], [-40, -20, 0, 0, 0, 0, -20, -40], [-30, 0, 10, 15, 15, 10, 0, -30], [-30, 5, 15, 20, 20, 15, 5, -30], [-30, 0, 15, 20, 20, 15, 0, -30], [-30, 5, 10, 15, 15, 10, 5, -30], [-40, -20, 0, 5, 5, 0, -20, -40], [-50, -10, -30, -30, -30, -30, -10, -50]]
+    whiteKnightSquareTable = blackKnightSquareTable.copy()
+    whiteKnightSquareTable.reverse()
+    blackBishopSquareTable = [[-20, -10, -10, -10, -10, -10, -10, -20], [-10, 0, 0, 0, 0, 0, 0, -10], [-10, 0, 5, 10, 10, 5, 0, -10], [-10, 5, 5, 10, 10, 5, 5, -10], [-10, 0, 10, 10, 10, 10, 0, -10], [-10, 10, 10, 10, 10, 10, 10, -10], [-10, 5, 0, 0, 0, 0, 5, -10], [-20, -10, -10, -10, -10, -10, -10, -20]]
+    whiteBishopSquareTable = blackBishopSquareTable.copy()
+    whiteBishopSquareTable.reverse()
+    blackRookSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0], [5, 10, 10, 10, 10, 10, 10, 5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [0, 0, 0, 5, 5, 5, 0, 0]]
+    whiteRookSquareTable = blackRookSquareTable.copy()
+    whiteRookSquareTable.reverse()
+    blackQueenSquareTable = [[-20, -10, -10, -5, -5, -10, -10, -20], [-10, 0, 0, 0, 0, 0, 0, -10], [-10, 0, 5, 5, 5, 5, 0, -10], [-5, 0, 5, 5, 5, 5, 0, -5], [0, 0, 5, 5, 5, 5, 0, -5], [-10, 5, 5, 5, 5, 5, 0, -10], [-10, 0, 5, 0, 0, 0, 0, -10], [-20, -10, -10, -5, -5, -10, -10, -20]]
+    whiteQueenSquareTable = blackQueenSquareTable.copy()
+    whiteQueenSquareTable.reverse()
+    blackKingSquareTable = [[-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-20, -30, -30, -40, -40, -30, -30, -20], [-10, -20, -20, -20, -20, -20, -20, -10], [20, 20, 0, 0, 0, 0, 20, 20], [20, 30, 10, 0, 0, 10, 30, 20]]
+    whiteKingSquareTable = blackKingSquareTable.copy()
+    whiteKingSquareTable.reverse()
 
 
     # statically evaluates and gives a score to the current board
@@ -381,9 +386,9 @@ class AI:
 
         # add bonus for bishop pair
         if len(board.pieces(chess.BISHOP, chess.WHITE)) == 2:
-            score += 50
+            score += 25
         if len(board.pieces(chess.BISHOP, chess.BLACK)) == 2:
-            score -= 50
+            score -= 25
         
         # add pawn structure bonus
         score += pawnStructure()
@@ -539,7 +544,10 @@ class AI:
             else:
                 node.nodeDepth = searchDepth
         else:
-            node = Node(1, depth=searchDepth)
+            if board.turn:
+                node = Node(1, depth=searchDepth, score=-math.inf)
+            else:
+                node = Node(1, depth=searchDepth, score=math.inf)
             AI.transpoTable[hash] = node
 
         moveList = AI.moveOrder(list(board.legal_moves), board, PV, depth, node)
@@ -609,6 +617,7 @@ class AI:
         finalDepth = False
         deep = 1
         aspMisses = 0
+        misses = []
         
         # iterative deepening loop
         if ID:
@@ -660,6 +669,7 @@ class AI:
                     beta = math.inf
                     finalDepth = False
                     aspMisses += 1
+                    misses.append(deep)
                 # the search didnt fall outside the window, we can move on to the next depth
                 else:
                     alpha = bestScore - 140
@@ -693,7 +703,7 @@ class AI:
         print("Moves transposed: ", AI.movesTransposed)
         print(f"Moving: {bestMove} with a score of {bestScore/100}")
         print(f"Cut nodes: {AI.cutNodes}, Alpha cuts: {AI.alphaCuts}, Beta cuts: {AI.betaCuts}")
-        print(f"Aspiration Window Misses: {aspMisses}")
+        print(f"Aspiration Window Misses: {aspMisses}, at depth(s): {misses}")
         print(f"PV: {PV}")
         #AI.movesExplored = 0
         AI.quiesceExplored = 0
@@ -732,7 +742,7 @@ if __name__ == "__main__":
                     opening = False
             if not opening:
                 start = time.time()
-                AI.go(5, -math.inf, math.inf, True)
+                AI.go(6, -math.inf, math.inf, True)
                 end = time.time()
                 print(f"Time spent searching: {end-start} seconds")
                 print(f"Nodes per second: {AI.movesExplored/(end-start)}")
