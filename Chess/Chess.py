@@ -1,9 +1,11 @@
 import chess
 import chess.polyglot
+import chess.engine
 import concurrent.futures
 import copy
 import math
 from multiprocessing import Manager
+import random
 import re
 import string
 import time
@@ -246,7 +248,7 @@ class AI:
     pieceScores = {'P':100, 'N':320, 'B':300, 'R':500, 'Q':900, 'K':20000, 'p':-100, 'n':-320, 'b':-300, 'r':-500, 'q':-900, 'k':-20000}
 
     # piece square tables
-    blackPawnSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0], [50, 50, 50, 50, 50, 50, 50, 50], [10, 10, 20, 30, 30, 20, 10, 10], [5, 5, 10, 25, 25, 10, 5, 5], [0, 0, 0, 20, 20, 0, 0, 0], [5, -5, 10, 0, 0, 10, -5, 5], [5, 10, 5, -20, -20, 5, 10, 5], [0, 0, 0, 0, 0, 0, 0, 0]]
+    blackPawnSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0], [50, 50, 50, 50, 50, 50, 50, 50], [10, 10, 20, 30, 30, 20, 10, 10], [5, 5, 10, 25, 25, 10, 5, 5], [0, 0, 0, 20, 20, 0, 0, 0], [-5, -5, 10, 0, 0, 10, -5, -5], [5, 10, 5, -20, -20, 5, 10, 5], [0, 0, 0, 0, 0, 0, 0, 0]]
     whitePawnSquareTable = blackPawnSquareTable.copy()
     whitePawnSquareTable.reverse()
     blackKnightSquareTable = [[-50, -40, -30, -30, -30, -30, -40, -50], [-40, -20, 0, 0, 0, 0, -20, -40], [-30, 0, 10, 15, 15, 10, 0, -30], [-30, 5, 15, 20, 20, 15, 5, -30], [-30, 0, 15, 20, 20, 15, 0, -30], [-30, 5, 10, 15, 15, 10, 5, -30], [-40, -20, 0, 5, 5, 0, -20, -40], [-50, -10, -30, -30, -30, -30, -10, -50]]
@@ -285,20 +287,20 @@ class AI:
                 file = chess.square_file(square)
                 if file == 0:
                     if whitePawns.isdisjoint(chess.BB_FILES[file + 1]):
-                        pawnScore -= 50
+                        pawnScore -= 5
                 elif file == 7:
                     if whitePawns.isdisjoint(chess.BB_FILES[file - 1]):
-                        pawnScore -= 50
+                        pawnScore -= 5
                 elif whitePawns.isdisjoint(chess.BB_FILES[file + 1]) and whitePawns.isdisjoint(chess.BB_FILES[file - 1]):
-                    pawnScore -= 50
+                    pawnScore -= 5
 
                 # defended pawns
                 if len(board.attackers(chess.WHITE, square).intersection(whitePawns)) > 0:
-                    pawnScore += 50
+                    pawnScore += 10
                 
                 # passed pawns
                 if blackPawns.isdisjoint(chess.BB_FILES[file]):
-                    pawnScore += 50
+                    pawnScore += 15
 
 
             for square in blackPawns:
@@ -306,20 +308,20 @@ class AI:
                 file = chess.square_file(square)
                 if file == 0:
                     if blackPawns.isdisjoint(chess.BB_FILES[file + 1]):
-                        pawnScore += 50
+                        pawnScore += 5
                 elif file == 7:
                     if blackPawns.isdisjoint(chess.BB_FILES[file - 1]):
-                        pawnScore += 50
+                        pawnScore += 5
                 elif blackPawns.isdisjoint(chess.BB_FILES[file + 1]) and blackPawns.isdisjoint(chess.BB_FILES[file - 1]):
-                    pawnScore += 50
+                    pawnScore += 5
 
                 # defended pawns
                 if len(board.attackers(chess.BLACK, square).intersection(blackPawns)) > 0:
-                    pawnScore -= 50
+                    pawnScore -= 10
 
                 # passed pawns
                 if whitePawns.isdisjoint(chess.BB_FILES[file]):
-                    pawnScore -= 50
+                    pawnScore -= 15
 
 
             # find doubled pawns
@@ -329,10 +331,10 @@ class AI:
                 blackInter = fileSet.intersection(blackPawns)
 
                 if len(whiteInter) > 1:
-                    pawnScore -= 50
+                    pawnScore -= 20
 
                 if len(blackInter) > 1:
-                    pawnScore += 50
+                    pawnScore += 20
             
             AI.pawnTranspoTable[combined.mask] = pawnScore
             return pawnScore
@@ -343,7 +345,7 @@ class AI:
         # returns a value if the current board state is a finshed game
         if board.is_game_over():
             # if the game ended in checkmate, return infinity if white won, and negitive infinity if black won
-            if board.outcome().termination == 1:
+            if board.outcome().termination == chess.Termination.CHECKMATE:
                 if board.outcome().winner:
                     return math.inf
                 else:
@@ -504,6 +506,7 @@ class AI:
             for move in captures:
                 board.push(move)
                 AI.quiesceExplored += 1
+                AI.movesExplored += 1
                 score = -AI.quiesce(-beta, -alpha, Qdepth - 1)
                 board.pop()
 
@@ -610,14 +613,22 @@ class AI:
     # starts the minimax algorithm and actually keeps track of and makes the best move
     @staticmethod
     def go(depth, alpha, beta, ID):
+        def sortMoves(score):
+            return score[0]
         bestScore = math.inf
         bestMove = None
         PV = []
-        moveList = AI.moveOrder(list(board.legal_moves), board, [0], 1, Node())
         finalDepth = False
         deep = 1
         aspMisses = 0
         misses = []
+
+        # prepare the move list
+        # the list is formatted to search the moves from best to worst
+        # according to their scores from the last search
+        moveListRaw = list(board.legal_moves)
+        moveList = [[0, moveListRaw[index]] for index in range(len(moveListRaw))]
+
         
         # iterative deepening loop
         if ID:
@@ -627,44 +638,33 @@ class AI:
                 # sets final depth flag
                 if deep == depth:
                     finalDepth = True
-                # checks Principal variation first
-                if PV != [] and deep > 1:
-                    currentLine[-deep] = PV[0]
-                    PVCheck = moveList.pop(moveList.index(chess.Move.from_uci(PV[0])))
-                    PV.append(0)
-                    board.push(PVCheck)
-                    AI.movesExplored += 1
-                    deep -= 1
-                    score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth, deep)
-                    board.pop()
-                    deep += 1
-                    if score < bestScore:
-                        bestScore = score
-                        bestMove = PVCheck
-                    PV = copy.copy(PVreturn)
-                    PV[-deep] = chess.Move.uci(PVCheck)
 
-                elif len(PV) != deep:
+                if len(PV) != deep:
                     PV.append(0)
 
                 # perform minimax search
-                for move in moveList:
+                for moveTuples in range(len(moveList)):
+                    move = moveList[moveTuples][1]
                     currentLine[-deep] = chess.Move.uci(move)
                     board.push(move)
                     AI.movesExplored += 1
                     deep -= 1
                     score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth, deep)
+                    moveList[moveTuples][0] = score
                     board.pop()
                     deep += 1
                     if score < bestScore:
                         bestScore = score
                         bestMove = move
                         PV = copy.copy(PVreturn)
-                if len(PV) > 1:
-                    moveList.insert(0, PVCheck)
+
+                # check to see if we found mate
+                if bestScore == math.inf or bestScore == -math.inf:
+                    break
+                
                 # set the aspiration window
                 # search was outside the window, need to redo the search
-                if bestScore <= alpha or bestScore >= beta:
+                if (bestScore <= alpha or bestScore >= beta):
                     alpha = -math.inf
                     beta = math.inf
                     finalDepth = False
@@ -672,14 +672,16 @@ class AI:
                     misses.append(deep)
                 # the search didnt fall outside the window, we can move on to the next depth
                 else:
-                    alpha = bestScore - 140
-                    beta = bestScore + 140
+                    alpha = bestScore - 50 * (aspMisses + 1)
+                    beta = bestScore + 50 * (aspMisses + 1)
                     deep += 1
                 # best move and best score need to be reset at the end of each loop
+                # the move list will also need to be sorted
                 # other wise the next iteration will have out of date data comparing to new data
                 if not finalDepth:
                     bestScore = math.inf
                     bestMove = None
+                    moveList.sort(key=sortMoves)
         else:
             for move in moveList:
                 board.push(move)
@@ -697,6 +699,11 @@ class AI:
                     AI.cutNodes += 1
                     AI.betaCuts += 1
                     break
+
+        # if the best move chosen is none, the AI probably lost
+        # in this case, we will just chose a random move
+        if bestMove == None:
+            bestMove = random.choice(moveListRaw)
         
         print("Total moves explored: ", AI.movesExplored)
         print(f"Total Quiescence Moves Searched: {AI.quiesceExplored}")
@@ -721,14 +728,20 @@ if __name__ == "__main__":
 
     opening = False
 
-    board.push(chess.Move.from_uci("d2d4"))
+    #board.push(chess.Move.from_uci("d2d4"))
     Game.displayBoard()
     print(f"Current board evaluation: {AI.evaluateBoard(board)/100}")
+
+    # stockfish engine for playing the AI against
+    stockfish = chess.engine.SimpleEngine.popen_uci("CHESS ENGINE TO PLAY AGAINST GOES HERE")
+    stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 1500})
 
     #game loop
     while not board.is_game_over():
         if board.turn:
             Game.turn()
+            #move = stockfish.play(board, chess.engine.Limit(time=5))
+            #board.push(move.move)
         else:
             print("Black to move")
             if opening:
@@ -742,7 +755,7 @@ if __name__ == "__main__":
                     opening = False
             if not opening:
                 start = time.time()
-                AI.go(6, -math.inf, math.inf, True)
+                AI.go(4, -math.inf, math.inf, True)
                 end = time.time()
                 print(f"Time spent searching: {end-start} seconds")
                 print(f"Nodes per second: {AI.movesExplored/(end-start)}")
