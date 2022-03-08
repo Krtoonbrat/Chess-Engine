@@ -74,7 +74,7 @@ class Game:
                                 print("{0:^7}|".format("bk"), end = "")
                     else:
                         print("       |", end = "")
-                    
+
                 # final row of lines
                 print("\n  |", end="")
                 for space in range(8):
@@ -89,9 +89,9 @@ class Game:
             print("      ", end = "")
             for lower in letters:
                 print("{}       ".format(lower), end = "")
-            
+
             print("")
-        
+
         # if it is black's turn, show the board from black's perspective
         else:
             # print dashes for formatting
@@ -145,7 +145,7 @@ class Game:
                                 print("{0:^7}|".format("bk"), end = "")
                     else:
                         print("       |", end = "")
-                    
+
                 # final row of lines
                 print("\n  |", end="")
                 for space in range(8):
@@ -160,19 +160,19 @@ class Game:
             print("      ", end = "")
             for lower in letters[::-1]:
                 print("{}       ".format(lower), end = "")
-            
+
             print("")
 
     # goes through the process of a turn
     @staticmethod
     def turn():
-        
+
         #tell the user whose turn it is
         if board.turn == chess.WHITE:
             print("White to move")
         else:
             print("Black to move")
-        
+
         # get the player move
         playerMove = input("Your Move? ").lower().split()
 
@@ -207,7 +207,7 @@ class Game:
             else:
                 move = chess.Move(pieceCoordinates, targetCoordinates)
                 break
-        
+
         # check to see if the move is legal
         if move in board.legal_moves:
             board.push(move)
@@ -238,7 +238,7 @@ class AI:
     transpoTable = {}
     pawnTranspoTable = {}
 
-    #number of cut nodes and alpha/beta specific cuts
+    # number of cut nodes and alpha/beta specific cuts
     cutNodes = 0
     alphaCuts = 0
     betaCuts = 0
@@ -297,7 +297,7 @@ class AI:
                 # defended pawns
                 if len(board.attackers(chess.WHITE, square).intersection(whitePawns)) > 0:
                     pawnScore += 10
-                
+
                 # passed pawns
                 if blackPawns.isdisjoint(chess.BB_FILES[file]):
                     pawnScore += 15
@@ -335,7 +335,7 @@ class AI:
 
                 if len(blackInter) > 1:
                     pawnScore += 20
-            
+
             AI.pawnTranspoTable[combined.mask] = pawnScore
             return pawnScore
 
@@ -353,7 +353,7 @@ class AI:
             # if the game ended from any kind of stalemate, return a zero
             else:
                 return 0
-        
+
         # get a dictionary of all the pieces with their squares as keys
         pieces = board.piece_map()
 
@@ -391,7 +391,7 @@ class AI:
             score += 25
         if len(board.pieces(chess.BISHOP, chess.BLACK)) == 2:
             score -= 25
-        
+
         # add pawn structure bonus
         score += pawnStructure()
 
@@ -453,7 +453,7 @@ class AI:
                 castling.append(move)
             else:
                 other.append(move)
-        
+
         captures.sort(key=MVVLVA, reverse=True)
         attackers.sort(key=MVVLVA, reverse=True)
         regicide.sort(key=MVVLVA, reverse=True)
@@ -554,7 +554,7 @@ class AI:
             AI.transpoTable[hash] = node
 
         moveList = AI.moveOrder(list(board.legal_moves), board, PV, depth, node)
-        
+
         # if it is whites turn
         if isMaximizer:
             # initial max score
@@ -629,7 +629,7 @@ class AI:
         moveListRaw = list(board.legal_moves)
         moveList = [[0, moveListRaw[index]] for index in range(len(moveListRaw))]
 
-        
+
         # iterative deepening loop
         if ID:
             while not finalDepth:
@@ -643,25 +643,14 @@ class AI:
                     PV.append(0)
 
                 # perform minimax search
-                for moveTuples in range(len(moveList)):
-                    move = moveList[moveTuples][1]
-                    currentLine[-deep] = chess.Move.uci(move)
-                    board.push(move)
-                    AI.movesExplored += 1
-                    deep -= 1
-                    score, PVreturn = AI.minimax(deep, True, alpha, beta, PV, currentLine, finalDepth, deep)
-                    moveList[moveTuples][0] = score
-                    board.pop()
-                    deep += 1
-                    if score < bestScore:
-                        bestScore = score
-                        bestMove = move
-                        PV = copy.copy(PVreturn)
+                bestScore, PV = AI.minimax(deep, False, alpha, beta, PV, currentLine, finalDepth, deep)
+                bestMove = chess.Move.from_uci(PV[0])
+
 
                 # check to see if we found mate
                 if bestScore == math.inf or bestScore == -math.inf:
                     break
-                
+
                 # set the aspiration window
                 # search was outside the window, need to redo the search
                 if (bestScore <= alpha or bestScore >= beta):
@@ -704,7 +693,7 @@ class AI:
         # in this case, we will just chose a random move
         if bestMove == None:
             bestMove = random.choice(moveListRaw)
-        
+
         print("Total moves explored: ", AI.movesExplored)
         print(f"Total Quiescence Moves Searched: {AI.quiesceExplored}")
         print("Moves transposed: ", AI.movesTransposed)
@@ -733,15 +722,24 @@ if __name__ == "__main__":
     print(f"Current board evaluation: {AI.evaluateBoard(board)/100}")
 
     # stockfish engine for playing the AI against
-    stockfish = chess.engine.SimpleEngine.popen_uci("CHESS ENGINE TO PLAY AGAINST GOES HERE")
-    stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 1500})
+    # this exists because I don't want to have to play full
+    # games against it myself to test how good it is
+    # stockfish will also give me a more repeatable performance
+    stockfish = chess.engine.SimpleEngine.popen_uci("C:\\Users\\Hughe\\Desktop\\arena_3.5.1\\Engines\\stockfish_14_win_x64_avx2\\stockfish_14_x64_avx2.exe")
+    stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 1350})
 
-    #game loop
+    # game loop
     while not board.is_game_over():
         if board.turn:
-            Game.turn()
-            #move = stockfish.play(board, chess.engine.Limit(time=5))
-            #board.push(move.move)
+            #Game.turn()
+            move = stockfish.play(board, chess.engine.Limit(time=1), info=chess.engine.Info.SCORE)
+            fishScore = move.info['score'].relative.score()
+            if isinstance(fishScore, int):
+                print(f"Stockfish analysis score: {move.info['score'].relative.score()/100}")
+            else:
+                print("Stockfish analysis score: Checkmate")
+            print(f"Stockfish moving: {move.move}")
+            board.push(move.move)
         else:
             print("Black to move")
             if opening:
@@ -755,7 +753,7 @@ if __name__ == "__main__":
                     opening = False
             if not opening:
                 start = time.time()
-                AI.go(4, -math.inf, math.inf, True)
+                AI.go(5, -math.inf, math.inf, True)
                 end = time.time()
                 print(f"Time spent searching: {end-start} seconds")
                 print(f"Nodes per second: {AI.movesExplored/(end-start)}")
@@ -769,6 +767,6 @@ if __name__ == "__main__":
             print("Checkmate.  White wins.")
         else:
             print("Checkmate.  Black wins.")
-    
+
     else:
         print("Stalemate.  Its a draw.")
