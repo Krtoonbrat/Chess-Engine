@@ -1,20 +1,32 @@
-import chess
-import chess.polyglot
-import chess.engine
-import concurrent.futures
 import copy
 import math
-from multiprocessing import Manager
 import random
 import re
 import string
 import time
 
+import chess
+import chess.engine
+import chess.polyglot
+
 # the chess board
 board = chess.Board()
 
+
 # class wrapping all the game functions
 class Game:
+
+    # makes a move using stockfish
+    @staticmethod
+    def fishMove(fish, limit):
+        move = fish.play(board, chess.engine.Limit(time=limit), info=chess.engine.Info.SCORE)
+        fishScore = move.info['score'].relative.score()
+        if isinstance(fishScore, int):
+            print(f"Stockfish analysis score: {move.info['score'].relative.score() / 100}")
+        else:
+            print("Stockfish analysis score: Checkmate")
+        print(f"Stockfish moving: {move.move}")
+        board.push(move.move)
 
     # displays the board
     @staticmethod
@@ -24,7 +36,7 @@ class Game:
         # if it is white's turn, show the board from white's perspective
         if board.turn == chess.WHITE:
             # print dashes for formatting
-            print("  " + "-"*65)
+            print("  " + "-" * 65)
 
             for row in range(8, 0, -1):
                 # first row of lines
@@ -34,46 +46,46 @@ class Game:
                 print("")
 
                 # display current row
-                print(row, end = "")
+                print(row, end="")
 
                 # start the board with a vertical line
-                print(" |", end = "")
+                print(" |", end="")
 
                 # iterate through each item in the current row
                 # if there isnt a piece, 5 spaces are printed
                 # if there is a piece, the piece's identifying string is printed
                 # and formatted to fit in the center of 5 characters with spaces on either side
                 for square in range(8):
-                    piece = board.piece_at(chess.square(square, row-1))
-                    if piece != None:
+                    piece = board.piece_at(chess.square(square, row - 1))
+                    if piece is not None:
                         if piece.color:
                             if piece.piece_type == chess.PAWN:
-                                print("{0:^7}|".format("wp"), end = "")
+                                print("{0:^7}|".format("wp"), end="")
                             elif piece.piece_type == chess.KNIGHT:
-                                print("{0:^7}|".format("wkn"), end = "")
+                                print("{0:^7}|".format("wkn"), end="")
                             elif piece.piece_type == chess.BISHOP:
-                                print("{0:^7}|".format("wb"), end = "")
+                                print("{0:^7}|".format("wb"), end="")
                             elif piece.piece_type == chess.ROOK:
-                                print("{0:^7}|".format("wr"), end = "")
+                                print("{0:^7}|".format("wr"), end="")
                             elif piece.piece_type == chess.QUEEN:
-                                print("{0:^7}|".format("wq"), end = "")
+                                print("{0:^7}|".format("wq"), end="")
                             elif piece.piece_type == chess.KING:
-                                print("{0:^7}|".format("wk"), end = "")
+                                print("{0:^7}|".format("wk"), end="")
                         else:
                             if piece.piece_type == chess.PAWN:
-                                print("{0:^7}|".format("bp"), end = "")
+                                print("{0:^7}|".format("bp"), end="")
                             elif piece.piece_type == chess.KNIGHT:
-                                print("{0:^7}|".format("bkn"), end = "")
+                                print("{0:^7}|".format("bkn"), end="")
                             elif piece.piece_type == chess.BISHOP:
-                                print("{0:^7}|".format("bb"), end = "")
+                                print("{0:^7}|".format("bb"), end="")
                             elif piece.piece_type == chess.ROOK:
-                                print("{0:^7}|".format("br"), end = "")
+                                print("{0:^7}|".format("br"), end="")
                             elif piece.piece_type == chess.QUEEN:
-                                print("{0:^7}|".format("bq"), end = "")
+                                print("{0:^7}|".format("bq"), end="")
                             elif piece.piece_type == chess.KING:
-                                print("{0:^7}|".format("bk"), end = "")
+                                print("{0:^7}|".format("bk"), end="")
                     else:
-                        print("       |", end = "")
+                        print("       |", end="")
 
                 # final row of lines
                 print("\n  |", end="")
@@ -81,21 +93,21 @@ class Game:
                     print("       |", end="")
 
                 # when the current row is finished printing, go to a new line and print the dashes to complete formatting
-                print("\n  ", end = "")
-                print("-"*65)
+                print("\n  ", end="")
+                print("-" * 65)
 
             # after each space in the board is printed, print the letter labels
             # for each column at the bottom
-            print("      ", end = "")
+            print("      ", end="")
             for lower in letters:
-                print("{}       ".format(lower), end = "")
+                print("{}       ".format(lower), end="")
 
             print("")
 
         # if it is black's turn, show the board from black's perspective
         else:
             # print dashes for formatting
-            print("  " + "-"*65)
+            print("  " + "-" * 65)
 
             for row in range(0, 8):
                 # first row of lines
@@ -105,46 +117,46 @@ class Game:
                 print("")
 
                 # display current row
-                print(row + 1, end = "")
+                print(row + 1, end="")
 
                 # start the board with a vertical line
-                print(" |", end = "")
+                print(" |", end="")
 
                 # iterate through each item in the current row
                 # if there isnt a piece, 5 spaces are printed
                 # if there is a piece, the piece's identifying string is printed
                 # and formatted to fit in the center of 5 characters with spaces on either side
                 for square in range(8, 0, -1):
-                    piece = board.piece_at(chess.square(square-1, row))
-                    if piece != None:
+                    piece = board.piece_at(chess.square(square - 1, row))
+                    if piece is not None:
                         if piece.color:
                             if piece.piece_type == chess.PAWN:
-                                print("{0:^7}|".format("wp"), end = "")
+                                print("{0:^7}|".format("wp"), end="")
                             elif piece.piece_type == chess.KNIGHT:
-                                print("{0:^7}|".format("wkn"), end = "")
+                                print("{0:^7}|".format("wkn"), end="")
                             elif piece.piece_type == chess.BISHOP:
-                                print("{0:^7}|".format("wb"), end = "")
+                                print("{0:^7}|".format("wb"), end="")
                             elif piece.piece_type == chess.ROOK:
-                                print("{0:^7}|".format("wr"), end = "")
+                                print("{0:^7}|".format("wr"), end="")
                             elif piece.piece_type == chess.QUEEN:
-                                print("{0:^7}|".format("wq"), end = "")
+                                print("{0:^7}|".format("wq"), end="")
                             elif piece.piece_type == chess.KING:
-                                print("{0:^7}|".format("wk"), end = "")
+                                print("{0:^7}|".format("wk"), end="")
                         else:
                             if piece.piece_type == chess.PAWN:
-                                print("{0:^7}|".format("bp"), end = "")
+                                print("{0:^7}|".format("bp"), end="")
                             elif piece.piece_type == chess.KNIGHT:
-                                print("{0:^7}|".format("bkn"), end = "")
+                                print("{0:^7}|".format("bkn"), end="")
                             elif piece.piece_type == chess.BISHOP:
-                                print("{0:^7}|".format("bb"), end = "")
+                                print("{0:^7}|".format("bb"), end="")
                             elif piece.piece_type == chess.ROOK:
-                                print("{0:^7}|".format("br"), end = "")
+                                print("{0:^7}|".format("br"), end="")
                             elif piece.piece_type == chess.QUEEN:
-                                print("{0:^7}|".format("bq"), end = "")
+                                print("{0:^7}|".format("bq"), end="")
                             elif piece.piece_type == chess.KING:
-                                print("{0:^7}|".format("bk"), end = "")
+                                print("{0:^7}|".format("bk"), end="")
                     else:
-                        print("       |", end = "")
+                        print("       |", end="")
 
                 # final row of lines
                 print("\n  |", end="")
@@ -152,14 +164,14 @@ class Game:
                     print("       |", end="")
 
                 # when the current row is finished printing, go to a new line and print the dashes to complete formatting
-                print("\n  ", end = "")
-                print("-"*65)
+                print("\n  ", end="")
+                print("-" * 65)
 
             # after each space in the board is printed, print the letter labels
             # for each column at the bottom
-            print("      ", end = "")
+            print("      ", end="")
             for lower in letters[::-1]:
-                print("{}       ".format(lower), end = "")
+                print("{}       ".format(lower), end="")
 
             print("")
 
@@ -167,7 +179,7 @@ class Game:
     @staticmethod
     def turn():
 
-        #tell the user whose turn it is
+        # tell the user whose turn it is
         if board.turn == chess.WHITE:
             print("White to move")
         else:
@@ -192,7 +204,9 @@ class Game:
 
         # pawn promotion
         while True:
-            if board.piece_type_at(pieceCoordinates) == chess.PAWN and ((chess.square_rank(targetCoordinates) == 7 and board.turn == chess.WHITE) or (chess.square_rank(targetCoordinates) == 0 and board.turn == chess.BLACK)):
+            if board.piece_type_at(pieceCoordinates) == chess.PAWN and (
+                    (chess.square_rank(targetCoordinates) == 7 and board.turn == chess.WHITE) or (
+                    chess.square_rank(targetCoordinates) == 0 and board.turn == chess.BLACK)):
                 promotion = input("Please chose a piece to promote to.  1:Queen, 2:Rook, 3:Knight, 4:Bishop: ")
                 if re.fullmatch("[1-4]", promotion):
                     if promotion == '1':
@@ -215,9 +229,10 @@ class Game:
             print("Illegal move.")
             Game.turn()
 
+
 # class representing a position stored in the transposition table
 class Node:
-    def __init__(self, type = None, best = None, score = None, pv = None, depth = None):
+    def __init__(self, type=None, best=None, score=None, pv=None, depth=None):
         self.nodeType = type
         self.bestMove = best
         self.nodeScore = score
@@ -226,6 +241,7 @@ class Node:
 
 
 # class wrapping all the AI variables and functions
+# noinspection SpellCheckingInspection
 class AI:
     # the number of moves a current search has explored
     movesExplored = 0
@@ -245,28 +261,70 @@ class AI:
 
     # base values for all the pieces
     # white gets a positive value, black a negitive
-    pieceScores = {'P':100, 'N':320, 'B':300, 'R':500, 'Q':900, 'K':20000, 'p':-100, 'n':-320, 'b':-300, 'r':-500, 'q':-900, 'k':-20000}
+    pieceScores = {'P': 100, 'N': 320, 'B': 300, 'R': 500, 'Q': 900, 'K': 20000, 'p': -100, 'n': -320, 'b': -300,
+                   'r': -500, 'q': -900, 'k': -20000}
 
     # piece square tables
-    blackPawnSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0], [50, 50, 50, 50, 50, 50, 50, 50], [10, 10, 20, 30, 30, 20, 10, 10], [5, 5, 10, 25, 25, 10, 5, 5], [0, 0, 0, 20, 20, 0, 0, 0], [-5, -5, 10, 0, 0, 10, -5, -5], [5, 10, 5, -20, -20, 5, 10, 5], [0, 0, 0, 0, 0, 0, 0, 0]]
+    blackPawnSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0],
+                            [50, 50, 50, 50, 50, 50, 50, 50],
+                            [10, 10, 20, 30, 30, 20, 10, 10],
+                            [5, 5, 10, 25, 25, 10, 5, 5],
+                            [0, 0, 0, 20, 20, 0, 0, 0],
+                            [-5, -5, 10, 0, 0, 10, -5, -5],
+                            [5, 10, 5, -20, -20, 5, 10, 5],
+                            [0, 0, 0, 0, 0, 0, 0, 0]]
     whitePawnSquareTable = blackPawnSquareTable.copy()
     whitePawnSquareTable.reverse()
-    blackKnightSquareTable = [[-50, -40, -30, -30, -30, -30, -40, -50], [-40, -20, 0, 0, 0, 0, -20, -40], [-30, 0, 10, 15, 15, 10, 0, -30], [-30, 5, 15, 20, 20, 15, 5, -30], [-30, 0, 15, 20, 20, 15, 0, -30], [-30, 5, 10, 15, 15, 10, 5, -30], [-40, -20, 0, 5, 5, 0, -20, -40], [-50, -10, -30, -30, -30, -30, -10, -50]]
+    blackKnightSquareTable = [[-50, -40, -30, -30, -30, -30, -40, -50],
+                              [-40, -20, 0, 0, 0, 0, -20, -40],
+                              [-30, 0, 10, 15, 15, 10, 0, -30],
+                              [-30, 5, 15, 20, 20, 15, 5, -30],
+                              [-30, 0, 15, 20, 20, 15, 0, -30],
+                              [-30, 5, 10, 15, 15, 10, 5, -30],
+                              [-40, -20, 0, 5, 5, 0, -20, -40],
+                              [-50, -10, -30, -30, -30, -30, -10, -50]]
     whiteKnightSquareTable = blackKnightSquareTable.copy()
     whiteKnightSquareTable.reverse()
-    blackBishopSquareTable = [[-20, -10, -10, -10, -10, -10, -10, -20], [-10, 0, 0, 0, 0, 0, 0, -10], [-10, 0, 5, 10, 10, 5, 0, -10], [-10, 5, 5, 10, 10, 5, 5, -10], [-10, 0, 10, 10, 10, 10, 0, -10], [-10, 10, 10, 10, 10, 10, 10, -10], [-10, 5, 0, 0, 0, 0, 5, -10], [-20, -10, -10, -10, -10, -10, -10, -20]]
+    blackBishopSquareTable = [[-20, -10, -10, -10, -10, -10, -10, -20],
+                              [-10, 0, 0, 0, 0, 0, 0, -10],
+                              [-10, 0, 5, 10, 10, 5, 0, -10],
+                              [-10, 5, 5, 10, 10, 5, 5, -10],
+                              [-10, 0, 10, 10, 10, 10, 0, -10],
+                              [-10, 10, 10, 10, 10, 10, 10, -10],
+                              [-10, 5, 0, 0, 0, 0, 5, -10],
+                              [-20, -10, -10, -10, -10, -10, -10, -20]]
     whiteBishopSquareTable = blackBishopSquareTable.copy()
     whiteBishopSquareTable.reverse()
-    blackRookSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0], [5, 10, 10, 10, 10, 10, 10, 5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [-5, 0, 0, 0, 0, 0, 0, -5], [0, 0, 0, 5, 5, 5, 0, 0]]
+    blackRookSquareTable = [[0, 0, 0, 0, 0, 0, 0, 0],
+                            [5, 10, 10, 10, 10, 10, 10, 5],
+                            [-5, 0, 0, 0, 0, 0, 0, -5],
+                            [-5, 0, 0, 0, 0, 0, 0, -5],
+                            [-5, 0, 0, 0, 0, 0, 0, -5],
+                            [-5, 0, 0, 0, 0, 0, 0, -5],
+                            [-5, 0, 0, 0, 0, 0, 0, -5],
+                            [0, 0, 0, 5, 5, 5, 0, 0]]
     whiteRookSquareTable = blackRookSquareTable.copy()
     whiteRookSquareTable.reverse()
-    blackQueenSquareTable = [[-20, -10, -10, -5, -5, -10, -10, -20], [-10, 0, 0, 0, 0, 0, 0, -10], [-10, 0, 5, 5, 5, 5, 0, -10], [-5, 0, 5, 5, 5, 5, 0, -5], [0, 0, 5, 5, 5, 5, 0, -5], [-10, 5, 5, 5, 5, 5, 0, -10], [-10, 0, 5, 0, 0, 0, 0, -10], [-20, -10, -10, -5, -5, -10, -10, -20]]
+    blackQueenSquareTable = [[-20, -10, -10, -5, -5, -10, -10, -20],
+                             [-10, 0, 0, 0, 0, 0, 0, -10],
+                             [-10, 0, 5, 5, 5, 5, 0, -10],
+                             [-5, 0, 5, 5, 5, 5, 0, -5],
+                             [0, 0, 5, 5, 5, 5, 0, -5],
+                             [-10, 5, 5, 5, 5, 5, 0, -10],
+                             [-10, 0, 5, 0, 0, 0, 0, -10],
+                             [-20, -10, -10, -5, -5, -10, -10, -20]]
     whiteQueenSquareTable = blackQueenSquareTable.copy()
     whiteQueenSquareTable.reverse()
-    blackKingSquareTable = [[-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-30, -40, -40, -50, -50, -40, -40, -30], [-20, -30, -30, -40, -40, -30, -30, -20], [-10, -20, -20, -20, -20, -20, -20, -10], [20, 20, 0, 0, 0, 0, 20, 20], [20, 30, 10, 0, 0, 10, 30, 20]]
+    blackKingSquareTable = [[-30, -40, -40, -50, -50, -40, -40, -30],
+                            [-30, -40, -40, -50, -50, -40, -40, -30],
+                            [-30, -40, -40, -50, -50, -40, -40, -30],
+                            [-30, -40, -40, -50, -50, -40, -40, -30],
+                            [-20, -30, -30, -40, -40, -30, -30, -20],
+                            [-10, -20, -20, -20, -20, -20, -20, -10],
+                            [20, 20, 0, 0, 0, 0, 20, 20],
+                            [20, 30, 10, 0, 0, 10, 30, 20]]
     whiteKingSquareTable = blackKingSquareTable.copy()
     whiteKingSquareTable.reverse()
-
 
     # statically evaluates and gives a score to the current board
     @staticmethod
@@ -281,7 +339,6 @@ class AI:
             if combined.mask in AI.pawnTranspoTable.keys():
                 return AI.pawnTranspoTable[combined.mask]
 
-
             for square in whitePawns:
                 # isolated pawns
                 file = chess.square_file(square)
@@ -291,7 +348,8 @@ class AI:
                 elif file == 7:
                     if whitePawns.isdisjoint(chess.BB_FILES[file - 1]):
                         pawnScore -= 5
-                elif whitePawns.isdisjoint(chess.BB_FILES[file + 1]) and whitePawns.isdisjoint(chess.BB_FILES[file - 1]):
+                elif whitePawns.isdisjoint(chess.BB_FILES[file + 1]) and whitePawns.isdisjoint(
+                        chess.BB_FILES[file - 1]):
                     pawnScore -= 5
 
                 # defended pawns
@@ -302,7 +360,6 @@ class AI:
                 if blackPawns.isdisjoint(chess.BB_FILES[file]):
                     pawnScore += 15
 
-
             for square in blackPawns:
                 # isolated pawns
                 file = chess.square_file(square)
@@ -312,7 +369,8 @@ class AI:
                 elif file == 7:
                     if blackPawns.isdisjoint(chess.BB_FILES[file - 1]):
                         pawnScore += 5
-                elif blackPawns.isdisjoint(chess.BB_FILES[file + 1]) and blackPawns.isdisjoint(chess.BB_FILES[file - 1]):
+                elif blackPawns.isdisjoint(chess.BB_FILES[file + 1]) and blackPawns.isdisjoint(
+                        chess.BB_FILES[file - 1]):
                     pawnScore += 5
 
                 # defended pawns
@@ -322,7 +380,6 @@ class AI:
                 # passed pawns
                 if whitePawns.isdisjoint(chess.BB_FILES[file]):
                     pawnScore -= 15
-
 
             # find doubled pawns
             for file in chess.BB_FILES:
@@ -342,9 +399,9 @@ class AI:
         # set the score to zero
         score = 0
 
-        # returns a value if the current board state is a finshed game
+        # returns a value if the current board state is a finished game
         if board.is_game_over():
-            # if the game ended in checkmate, return infinity if white won, and negitive infinity if black won
+            # if the game ended in checkmate, return infinity if white won, and negative infinity if black won
             if board.outcome().termination == chess.Termination.CHECKMATE:
                 if board.outcome().winner:
                     return math.inf
@@ -361,30 +418,42 @@ class AI:
         for square in pieces.keys():
             if pieces[square].color:
                 if pieces[square].piece_type == chess.PAWN:
-                    score += AI.pieceScores[pieces[square].symbol()] + AI.whitePawnSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] + \
+                             AI.whitePawnSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.KNIGHT:
-                    score += AI.pieceScores[pieces[square].symbol()] + AI.whiteKnightSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] + \
+                             AI.whiteKnightSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.BISHOP:
-                    score += AI.pieceScores[pieces[square].symbol()] + AI.whiteBishopSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] + \
+                             AI.whiteBishopSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.ROOK:
-                    score += AI.pieceScores[pieces[square].symbol()] + AI.whiteRookSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] + \
+                             AI.whiteRookSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.QUEEN:
-                    score += AI.pieceScores[pieces[square].symbol()] + AI.whiteQueenSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] + \
+                             AI.whiteQueenSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.KING:
-                    score += AI.pieceScores[pieces[square].symbol()] + AI.whiteKingSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] + \
+                             AI.whiteKingSquareTable[chess.square_rank(square)][chess.square_file(square)]
             else:
                 if pieces[square].piece_type == chess.PAWN:
-                    score += AI.pieceScores[pieces[square].symbol()] - AI.blackPawnSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] - \
+                             AI.blackPawnSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.KNIGHT:
-                    score += AI.pieceScores[pieces[square].symbol()] - AI.blackKnightSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] - \
+                             AI.blackKnightSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.BISHOP:
-                    score += AI.pieceScores[pieces[square].symbol()] - AI.blackBishopSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] - \
+                             AI.blackBishopSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.ROOK:
-                    score += AI.pieceScores[pieces[square].symbol()] - AI.blackRookSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] - \
+                             AI.blackRookSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.QUEEN:
-                    score += AI.pieceScores[pieces[square].symbol()] - AI.blackQueenSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] - \
+                             AI.blackQueenSquareTable[chess.square_rank(square)][chess.square_file(square)]
                 elif pieces[square].piece_type == chess.KING:
-                    score += AI.pieceScores[pieces[square].symbol()] - AI.blackKingSquareTable[chess.square_rank(square)][chess.square_file(square)]
+                    score += AI.pieceScores[pieces[square].symbol()] - \
+                             AI.blackKingSquareTable[chess.square_rank(square)][chess.square_file(square)]
 
         # add bonus for bishop pair
         if len(board.pieces(chess.BISHOP, chess.WHITE)) == 2:
@@ -401,8 +470,10 @@ class AI:
     def moveOrder(moves, board, PV, depth, node):
         def MVVLVA(move):
             if board.is_en_passant(move):
-                return abs(AI.pieceScores[board.piece_at(board.peek().to_square).symbol()]) - abs(AI.pieceScores[board.piece_at(move.from_square).symbol()])
-            return abs(AI.pieceScores[board.piece_at(move.to_square).symbol()]) - abs(AI.pieceScores[board.piece_at(move.from_square).symbol()])
+                return abs(AI.pieceScores[board.piece_at(board.peek().to_square).symbol()]) - abs(
+                    AI.pieceScores[board.piece_at(move.from_square).symbol()])
+            return abs(AI.pieceScores[board.piece_at(move.to_square).symbol()]) - abs(
+                AI.pieceScores[board.piece_at(move.from_square).symbol()])
 
         orderedMoves = []
 
@@ -435,7 +506,8 @@ class AI:
             board.push(lastMove)
             if board.is_attacked_by(board.turn, board.peek().to_square):
                 for retaliation in board.attackers(board.turn, board.peek().to_square):
-                    if board.is_legal(chess.Move(retaliation, board.peek().to_square)) and chess.Move(retaliation, board.peek().to_square) not in regicide:
+                    if board.is_legal(chess.Move(retaliation, board.peek().to_square)) and chess.Move(retaliation,
+                                                                                                      board.peek().to_square) not in regicide:
                         MAD = chess.Move(retaliation, board.peek().to_square)
                         attackers.append(MAD)
                         moves.remove(MAD)
@@ -467,7 +539,6 @@ class AI:
         orderedMoves.extend(other)
 
         return orderedMoves
-
 
     @staticmethod
     def quiesce(alpha, beta, Qdepth):
@@ -519,7 +590,6 @@ class AI:
             return alpha
         else:
             return standPat
-
 
     @staticmethod
     def minimax(depth, isMaximizer, alpha, beta, PV, currentLine, finalDepth, searchDepth):
@@ -609,12 +679,10 @@ class AI:
                     break
             return minScore, node.PV
 
-
     # starts the minimax algorithm and actually keeps track of and makes the best move
     @staticmethod
-    def go(depth, alpha, beta, ID):
-        def sortMoves(score):
-            return score[0]
+    def go(depth, alpha, beta):
+
         bestScore = math.inf
         bestMove = None
         PV = []
@@ -624,84 +692,60 @@ class AI:
         misses = []
 
         # prepare the move list
-        # the list is formatted to search the moves from best to worst
-        # according to their scores from the last search
+        # for redundancy if we need to grab a random move
         moveListRaw = list(board.legal_moves)
-        moveList = [[0, moveListRaw[index]] for index in range(len(moveListRaw))]
-
 
         # iterative deepening loop
-        if ID:
-            while not finalDepth:
-                currentLine = [0 for x in range(deep)]
+        while not finalDepth:
+            currentLine = [0 for x in range(deep)]
 
-                # sets final depth flag
-                if deep == depth:
-                    finalDepth = True
+            # sets final depth flag
+            if deep == depth:
+                finalDepth = True
 
-                if len(PV) != deep:
-                    PV.append(0)
+            if len(PV) != deep:
+                PV.append(0)
 
-                # perform minimax search
-                bestScore, PV = AI.minimax(deep, False, alpha, beta, PV, currentLine, finalDepth, deep)
+            # perform minimax search
+            bestScore, PV = AI.minimax(deep, False, alpha, beta, PV, currentLine, finalDepth, deep)
+            # If there is checkmate, there will be no best move, so an error will be raised
+            # in that case, just pick a random one
+            try:
                 bestMove = chess.Move.from_uci(PV[0])
+            except:
+                bestMove = random.choice(moveListRaw)
 
+            # check to see if we found mate
+            if bestScore == math.inf or bestScore == -math.inf:
+                break
 
-                # check to see if we found mate
-                if bestScore == math.inf or bestScore == -math.inf:
-                    break
-
-                # set the aspiration window
-                # search was outside the window, need to redo the search
-                if (bestScore <= alpha or bestScore >= beta):
-                    alpha = -math.inf
-                    beta = math.inf
-                    finalDepth = False
-                    aspMisses += 1
-                    misses.append(deep)
-                # the search didnt fall outside the window, we can move on to the next depth
-                else:
-                    alpha = bestScore - 50 * (aspMisses + 1)
-                    beta = bestScore + 50 * (aspMisses + 1)
-                    deep += 1
-                # best move and best score need to be reset at the end of each loop
-                # the move list will also need to be sorted
-                # other wise the next iteration will have out of date data comparing to new data
-                if not finalDepth:
-                    bestScore = math.inf
-                    bestMove = None
-                    moveList.sort(key=sortMoves)
-        else:
-            for move in moveList:
-                board.push(move)
-                AI.movesExplored += 1
-                depth -= 1
-                #score = AI.minimaxNOID(depth, True, alpha, beta)
-                score = 0
-                board.pop()
-                depth += 1
-                if score < bestScore:
-                    bestScore = score
-                    bestMove = move
-                beta = min(beta, score)
-                if beta <= alpha:
-                    AI.cutNodes += 1
-                    AI.betaCuts += 1
-                    break
-
-        # if the best move chosen is none, the AI probably lost
-        # in this case, we will just chose a random move
-        if bestMove == None:
-            bestMove = random.choice(moveListRaw)
+            # set the aspiration window
+            # search was outside the window, need to redo the search
+            if bestScore <= alpha or bestScore >= beta:
+                alpha = -math.inf
+                beta = math.inf
+                finalDepth = False
+                aspMisses += 1
+                misses.append(deep)
+            # the search didn't fall outside the window, we can move on to the next depth
+            else:
+                alpha = bestScore - 50 * (aspMisses + 1)
+                beta = bestScore + 50 * (aspMisses + 1)
+                deep += 1
+            # best move and best score need to be reset at the end of each loop
+            # the move list will also need to be sorted
+            # otherwise the next iteration will have out of date data comparing to new data
+            if not finalDepth:
+                bestScore = math.inf
+                bestMove = None
 
         print("Total moves explored: ", AI.movesExplored)
         print(f"Total Quiescence Moves Searched: {AI.quiesceExplored}")
         print("Moves transposed: ", AI.movesTransposed)
-        print(f"Moving: {bestMove} with a score of {bestScore/100}")
+        print(f"Moving: {bestMove} with a score of {bestScore / 100}")
         print(f"Cut nodes: {AI.cutNodes}, Alpha cuts: {AI.alphaCuts}, Beta cuts: {AI.betaCuts}")
         print(f"Aspiration Window Misses: {aspMisses}, at depth(s): {misses}")
         print(f"PV: {PV}")
-        #AI.movesExplored = 0
         AI.quiesceExplored = 0
         AI.movesTransposed = 0
         AI.cutNodes = 0
@@ -711,35 +755,27 @@ class AI:
         board.push(bestMove)
 
 
-
-
 if __name__ == "__main__":
 
     opening = False
 
     #board.push(chess.Move.from_uci("d2d4"))
     Game.displayBoard()
-    print(f"Current board evaluation: {AI.evaluateBoard(board)/100}")
+    print(f"Current board evaluation: {AI.evaluateBoard(board) / 100}")
 
     # stockfish engine for playing the AI against
     # this exists because I don't want to have to play full
     # games against it myself to test how good it is
     # stockfish will also give me a more repeatable performance
-    stockfish = chess.engine.SimpleEngine.popen_uci("C:\\Users\\Hughe\\Desktop\\arena_3.5.1\\Engines\\stockfish_14_win_x64_avx2\\stockfish_14_x64_avx2.exe")
+    stockfish = chess.engine.SimpleEngine.popen_uci("")
     stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 1350})
 
     # game loop
     while not board.is_game_over():
         if board.turn:
             #Game.turn()
-            move = stockfish.play(board, chess.engine.Limit(time=1), info=chess.engine.Info.SCORE)
-            fishScore = move.info['score'].relative.score()
-            if isinstance(fishScore, int):
-                print(f"Stockfish analysis score: {move.info['score'].relative.score()/100}")
-            else:
-                print("Stockfish analysis score: Checkmate")
-            print(f"Stockfish moving: {move.move}")
-            board.push(move.move)
+            Game.fishMove(stockfish, 1)
+
         else:
             print("Black to move")
             if opening:
@@ -753,13 +789,13 @@ if __name__ == "__main__":
                     opening = False
             if not opening:
                 start = time.time()
-                AI.go(5, -math.inf, math.inf, True)
+                AI.go(5, -math.inf, math.inf)
                 end = time.time()
-                print(f"Time spent searching: {end-start} seconds")
-                print(f"Nodes per second: {AI.movesExplored/(end-start)}")
+                print(f"Time spent searching: {end - start} seconds")
+                print(f"Nodes per second: {AI.movesExplored / (end - start)}")
                 AI.movesExplored = 0
         Game.displayBoard()
-        print(f"Current board evaluation: {AI.evaluateBoard(board)/100}")
+        print(f"Current board evaluation: {AI.evaluateBoard(board) / 100}")
 
     # show who won
     if board.outcome().termination == chess.Termination.CHECKMATE:
