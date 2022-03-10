@@ -22,14 +22,14 @@ if __name__ == "__main__":
     # this exists because I don't want to have to play full
     # games against it myself to test how good it is
     # stockfish will also give me a more repeatable performance
-    stockfish = chess.engine.SimpleEngine.popen_uci("C:\\Users\\Hughe\\Desktop\\arena_3.5.1\\Engines\\stockfish_14_win_x64_avx2\\stockfish_14_x64_avx2.exe")
-    stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 1350})
+    #stockfish = chess.engine.SimpleEngine.popen_uci("")
+    #stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 1350})
 
     # game loop
     while not board.is_game_over():
         if board.turn:
-            #Game.turn(board)
-            Game.fishMove(stockfish, 1, board)
+            Game.turn(board)
+            #Game.fishMove(stockfish, 1, board)
 
         else:
             print("Black to move")
