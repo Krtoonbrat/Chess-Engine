@@ -13,7 +13,6 @@ if __name__ == "__main__":
     board = chess.Board()
     # test positions
     #board.set_epd("3r2k1/p2r1p1p/1p2p1p1/q4n2/3P4/PQ5P/1P1RNPP1/3R2K1 b - - bm Nxd4; id \"position 02\";")
-    board.set_fen("r1b1k2r/1p4pp/p4p2/8/3pP1nB/5P2/1q1KQ1PP/2r2B1R w kq - 0 29")
 
     # set this to true if you want to use an opening book
     opening = False
