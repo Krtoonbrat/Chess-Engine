@@ -4,7 +4,8 @@ import random
 
 import chess
 import chess.polyglot
-from Node import Node
+from Node import *
+from sortedcontainers import SortedKeyList
 
 
 # class wrapping all the AI variables and functions
@@ -20,6 +21,9 @@ class AI:
     # transposition tables
     transpoTable = {}
     pawnTranspoTable = {}
+
+    # killer moves
+    killer = {}
 
     # number of cut nodes and alpha/beta specific cuts
     cutNodes = 0
@@ -233,20 +237,41 @@ class AI:
 
         # give the AI a slap for moving the queen too early
         if board.fullmove_number < 8 and board.piece_type_at(chess.D1) is not chess.QUEEN:
-            score -= 25
+            score -= 15
         if board.fullmove_number < 8 and board.piece_type_at(chess.D8) is not chess.QUEEN:
-            score += 25
+            score += 15
+
+        # space advantages
+        # the basic idea is to reward each side for being able to move to central squares safely
+        files = chess.SquareSet(chess.BB_FILE_C | chess.BB_FILE_D | chess.BB_FILE_E | chess.BB_FILE_F)
+
+        # white
+        whiteSpace = chess.SquareSet((files & chess.BB_RANK_2) | (files & chess.BB_RANK_3) | (files & chess.BB_RANK_4))
+        whiteSafeCount = 0
+        for square in whiteSpace:
+            if not board.is_attacked_by(chess.BLACK, square):
+                whiteSafeCount += 1
+        score += whiteSafeCount * 5
+
+        # black
+        blackSpace = chess.SquareSet((files & chess.BB_RANK_7) | (files & chess.BB_RANK_6) | (files & chess.BB_RANK_5))
+        blackSafeCount = 0
+        for square in blackSpace:
+            if not board.is_attacked_by(chess.WHITE, square):
+                blackSafeCount += 1
+        score -= blackSafeCount * 5
 
         return score
 
     @staticmethod
     def moveOrder(moves, board, PV, depth, node):
+        # Most Valuable Victim Least Valuable Attacker function
         def MVVLVA(move):
             if board.is_en_passant(move):
-                return abs(AI.pieceScores[board.piece_at(board.peek().to_square).symbol()]) - abs(
-                    AI.pieceScores[board.piece_at(move.from_square).symbol()])
-            return abs(AI.pieceScores[board.piece_at(move.to_square).symbol()]) - abs(
-                AI.pieceScores[board.piece_at(move.from_square).symbol()])
+                return -(abs(AI.pieceScores[board.piece_at(board.peek().to_square).symbol()]) - abs(
+                    AI.pieceScores[board.piece_at(move.from_square).symbol()]))
+            return -(abs(AI.pieceScores[board.piece_at(move.to_square).symbol()]) - abs(
+                AI.pieceScores[board.piece_at(move.from_square).symbol()]))
 
         orderedMoves = []
 
@@ -257,26 +282,13 @@ class AI:
             orderedMoves.append(node.bestMove)
             moves.remove(node.bestMove)
 
-        regicide = []
-        attackers = []
+        attackers = SortedKeyList(key=MVVLVA)
+        lCaptures = SortedKeyList(key=MVVLVA)
+        wCaptures = SortedKeyList(key=MVVLVA)
+        eCaptures = SortedKeyList(key=MVVLVA)
         checks = []
-        captures = []
-        zeroing = []
-        castling = []
+        killers = []
         other = []
-
-        queens = board.pieces(chess.QUEEN, not board.turn)
-
-        if len(queens) != 0:
-            for royalty in queens:
-                if board.is_attacked_by(board.turn, royalty):
-                    for assassin in board.attacks(royalty):
-                        murder = chess.Move(assassin, royalty)
-                        if board.is_legal(murder) and murder not in orderedMoves:
-                            regicide.append(murder)
-                            moves.remove(murder)
-
-        orderedMoves.extend(regicide)
 
         # I wrapped this in a try except for when board.pop()
         # throws an error for there being no moves in the stack.
@@ -290,7 +302,7 @@ class AI:
                     for retaliation in board.attackers(board.turn, board.peek().to_square):
                         MAD = chess.Move(retaliation, board.peek().to_square)
                         if board.is_legal(MAD) and MAD not in orderedMoves:
-                            attackers.append(MAD)
+                            attackers.add(MAD)
                             moves.remove(MAD)
             else:
                 board.push(lastMove)
@@ -299,25 +311,25 @@ class AI:
 
         for move in moves:
             if board.is_capture(move):
-                captures.append(move)
+                if MVVLVA(move) < -20:
+                    wCaptures.add(move)
+                elif MVVLVA(move) > 20:
+                    lCaptures.add(move)
+                else:
+                    eCaptures.add(move)
+            elif int(str(move.from_square) + str(move.to_square)) in AI.killer[board.ply()]:
+                killers.append(move)
             elif board.gives_check(move):
                 checks.append(move)
-            elif board.is_zeroing(move):
-                zeroing.append(move)
-            elif board.is_castling(move):
-                castling.append(move)
             else:
                 other.append(move)
 
-        captures.sort(key=MVVLVA, reverse=True)
-        attackers.sort(key=MVVLVA, reverse=True)
-        regicide.sort(key=MVVLVA, reverse=True)
-
         orderedMoves.extend(attackers)
-        orderedMoves.extend(captures)
+        orderedMoves.extend(wCaptures)
+        orderedMoves.extend(eCaptures)
         orderedMoves.extend(checks)
-        orderedMoves.extend(zeroing)
-        orderedMoves.extend(castling)
+        orderedMoves.extend(killers)
+        orderedMoves.extend(lCaptures)
         orderedMoves.extend(other)
 
         return orderedMoves
@@ -384,6 +396,10 @@ class AI:
                     return -AI.quiesce(board, alpha, beta, 3), currentLine
             return AI.evaluateBoard(board), currentLine
 
+        # create an index for killer moves if there isn't one already
+        if board.ply() not in AI.killer.keys():
+            AI.killer[board.ply()] = set()
+
         # transposition lookup
         hash = chess.polyglot.zobrist_hash(board)
         if hash in AI.transpoTable.keys():
@@ -428,6 +444,7 @@ class AI:
                 alpha = max(score, alpha)
                 board.pop()
                 if maxScore >= beta:
+                    AI.killer[board.ply()].add(int(str(move.from_square) + str(move.to_square)))
                     AI.cutNodes += 1
                     AI.betaCuts += 1
                     node.nodeType = 2
@@ -455,6 +472,7 @@ class AI:
                 beta = min(score, beta)
                 board.pop()
                 if minScore <= alpha:
+                    AI.killer[board.ply()].add(int(str(move.from_square) + str(move.to_square)))
                     AI.cutNodes += 1
                     AI.alphaCuts += 1
                     node.nodeType = 3
@@ -534,4 +552,8 @@ class AI:
         AI.alphaCuts = 0
         AI.betaCuts = 0
         AI.transpoTable.clear()
+        del AI.killer[board.ply()]
+        # if the AI finds a mate in one, there will only be one killer set to delete
+        if board.ply() + 1 in AI.killer.keys():
+            del AI.killer[board.ply() + 1]
         board.push(bestMove)

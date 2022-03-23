@@ -11,7 +11,7 @@ class Game:
     # makes a move using stockfish
     @staticmethod
     def fishMove(fish, limit, board):
-        move = fish.play(board, chess.engine.Limit(time=limit), info=chess.engine.Info.SCORE)
+        move = fish.play(board, chess.engine.Limit(depth=limit), info=chess.engine.Info.SCORE)
         fishScore = move.info['score'].relative.score()
         if isinstance(fishScore, int):
             print(f"Stockfish analysis score: {move.info['score'].relative.score() / 100}")
